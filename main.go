@@ -1,40 +1,43 @@
-//go:generate go run pkg/codegen/cleanup/main.go
-//go:generate /bin/rm -rf pkg/generated
-//go:generate go run pkg/codegen/main.go
-
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
 
-	"github.com/rancher/config-modifier/pkg/foo"
-	"github.com/rancher/config-modifier/pkg/generated/controllers/some.api.group"
-	"github.com/rancher/wrangler/pkg/kubeconfig"
-	"github.com/rancher/wrangler/pkg/signals"
-	"github.com/rancher/wrangler/pkg/start"
+	"github.com/rancher/config-modifier/pkg/config"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
 var (
-	Version    = "v0.0.0-dev"
+	Version    = "v0.0.1"
 	GitCommit  = "HEAD"
-	KubeConfig string
+	hostPath   string
+	configPath string
+	nodeLabels cli.StringSlice
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "testy"
+	app.Name = "config modifier"
 	app.Version = fmt.Sprintf("%s (%s)", Version, GitCommit)
-	app.Usage = "testy needs help!"
+	app.Usage = "Modify config file in k3s or rke2 nodes"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "kubeconfig",
-			EnvVar:      "KUBECONFIG",
-			Destination: &KubeConfig,
+			Name:        "hostPath",
+			EnvVar:      "HOSTPATH",
+			Destination: &hostPath,
+		},
+		cli.StringFlag{
+			Name:        "configPath",
+			EnvVar:      "CONFIGPATH",
+			Destination: &configPath,
+		},
+		cli.StringSliceFlag{
+			Name:   "nodeLabels",
+			EnvVar: "NODELABELS",
+			Value:  &nodeLabels,
 		},
 	}
 	app.Action = run
@@ -44,27 +47,7 @@ func main() {
 	}
 }
 
-func run(c *cli.Context) {
-	flag.Parse()
-
-	logrus.Info("Starting controller")
-	ctx := signals.SetupSignalHandler(context.Background())
-
-	kubeConfig, err := kubeconfig.GetNonInteractiveClientConfig(KubeConfig).ClientConfig()
-	if err != nil {
-		logrus.Fatalf("failed to find kubeconfig: %v", err)
-	}
-
-	foos, err := some.NewFactoryFromConfig(kubeConfig)
-	if err != nil {
-		logrus.Fatalf("Error building sample controllers: %s", err.Error())
-	}
-
-	foo.Register(ctx, foos.Some().V1().Foo())
-
-	if err := start.All(ctx, 2, foos); err != nil {
-		logrus.Fatalf("Error starting: %s", err.Error())
-	}
-
-	<-ctx.Done()
+func run(c *cli.Context) error {
+	err := config.PlaceConfigFile(hostPath, configPath, nodeLabels)
+	return err
 }
