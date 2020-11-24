@@ -18,11 +18,8 @@ func fileExists(path string) bool {
 	return true
 }
 
-func PlaceConfigFile(hostPath, configPath string, nodeLabels []string) error {
-	var (
-		token     string
-		datastore string
-	)
+func PlaceConfigFile(hostPath, configPath string, nodeLabels, preservedEntries []string) error {
+	preserved := make(map[string]interface{})
 	if fileExists(hostPath) {
 		fmt.Println("config file exists on the host")
 		filetxt, err := ioutil.ReadFile(hostPath)
@@ -34,11 +31,10 @@ func PlaceConfigFile(hostPath, configPath string, nodeLabels []string) error {
 		if err != nil {
 			return err
 		}
-		if config["token"] != "" {
-			token = fmt.Sprintf("%v", config["token"])
-		}
-		if config["datastore-endpoint"] != "" {
-			datastore = fmt.Sprintf("%v", config["datastore-endpoint"])
+		for _, entry := range preservedEntries {
+			if config[entry] != nil {
+				preserved[entry] = config[entry]
+			}
 		}
 	}
 	configs, err := ioutil.ReadDir(configPath)
@@ -55,14 +51,11 @@ func PlaceConfigFile(hostPath, configPath string, nodeLabels []string) error {
 				}
 				contentMap := make(map[string]interface{})
 				err = yaml.Unmarshal(content, contentMap)
-				if token != "" {
-					contentMap["token"] = token
-				}
-				if datastore != "" {
-					contentMap["datastore-endpoint"] = datastore
-				}
 				if err != nil {
 					return err
+				}
+				for entry := range preserved {
+					contentMap[entry] = preserved[entry]
 				}
 				content, err = yaml.Marshal(contentMap)
 				if err != nil {
