@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	Version    = "v0.0.1"
-	GitCommit  = "HEAD"
-	hostPath   string
-	configPath string
-	nodeLabels cli.StringSlice
+	Version          = "v0.0.1"
+	GitCommit        = "HEAD"
+	hostPath         string
+	configPath       string
+	nodeLabels       cli.StringSlice
+	preservedEntries cli.StringSlice
 )
 
 func main() {
@@ -25,19 +26,24 @@ func main() {
 	app.Usage = "Modify config file in k3s or rke2 nodes"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "hostPath",
-			EnvVar:      "HOSTPATH",
+			Name:        "host-path",
+			EnvVar:      "HOST_PATH",
 			Destination: &hostPath,
 		},
 		cli.StringFlag{
-			Name:        "configPath",
-			EnvVar:      "CONFIGPATH",
+			Name:        "config-path",
+			EnvVar:      "CONFIG_PATH",
 			Destination: &configPath,
 		},
 		cli.StringSliceFlag{
-			Name:   "nodeLabels",
-			EnvVar: "NODELABELS",
+			Name:   "node-labels",
+			EnvVar: "NODE_LABELS",
 			Value:  &nodeLabels,
+		},
+		cli.StringSliceFlag{
+			Name:   "preserved-entries",
+			EnvVar: "PRESERVED_ENTRIES",
+			Value:  &preservedEntries,
 		},
 	}
 	app.Action = run
@@ -48,6 +54,6 @@ func main() {
 }
 
 func run(c *cli.Context) error {
-	err := config.PlaceConfigFile(hostPath, configPath, nodeLabels)
+	err := config.PlaceConfigFile(hostPath, configPath, nodeLabels, preservedEntries)
 	return err
 }
